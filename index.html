@@ -1,0 +1,858 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ФК РЭУ</title>
+<meta name="description" content="РЭУ Football Club — студенческий футбол Москвы с 2010 года.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="ФК РЭУ">
+<meta property="og:description" content="РЭУ Football Club — студенческий футбол Москвы с 2010 года.">
+<meta property="og:url" content="https://poltfromsky.github.io/fc-reu/">
+<meta property="og:image" content="https://poltfromsky.github.io/fc-reu/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#030507">
+<link rel="icon" href="favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="logo.png">
+<!-- всё своё, без внешних CDN — чтобы сайт открывался в России и с VPN, и без -->
+<link rel="stylesheet" href="vendor/fonts/fonts.css">
+<link rel="preload" href="vendor/fonts/unbounded-900-cyrillic.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+  :root { --ink: #030507; --paper: #f2eee6; --dim: rgba(242, 238, 230, .48); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { color-scheme: dark; } }
+  :root[data-theme="dark"] { color-scheme: dark; }
+
+  html, body { margin: 0; background: var(--ink); overflow-x: hidden; scrollbar-width: none; }
+  html::-webkit-scrollbar { display: none; }
+  #scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: pan-y; }
+  .scroll { height: 260vh; }
+  body.grab #scene { cursor: grab; }
+  body.grabbing #scene { cursor: grabbing; }
+
+  .ui {
+    position: fixed; inset: 0; pointer-events: none;
+    font: 600 clamp(11px, .72vw, 16px)/1.5 "Manrope", system-ui, sans-serif; letter-spacing: .22em; text-transform: uppercase;
+    color: var(--dim); opacity: 0; transition: opacity 1.6s ease;
+  }
+  .ui.on { opacity: 1; }
+  .ui > div { position: absolute; }
+  .ui b { color: var(--paper); font-weight: 700; }
+  .tl { top: clamp(30px, 2.2vw, 56px); left: clamp(34px, 2.4vw, 64px); } .tr { top: clamp(30px, 2.2vw, 56px); right: clamp(34px, 2.4vw, 64px); text-align: right; }
+  .bl { bottom: clamp(30px, 2.2vw, 56px); left: clamp(34px, 2.4vw, 64px); } .br { bottom: clamp(30px, 2.2vw, 56px); right: clamp(34px, 2.4vw, 64px); text-align: right; }
+  #snd {
+    pointer-events: auto; margin-top: 10px; padding: 0; border: 0; background: none; cursor: pointer;
+    font: inherit; letter-spacing: inherit; text-transform: inherit; color: var(--dim);
+  }
+  #snd:hover, #snd.on { color: var(--paper); }
+  .tl { display: flex; align-items: center; gap: clamp(10px, .8vw, 16px); }
+  .tl .crest { width: clamp(34px, 2.6vw, 54px); height: auto; filter: drop-shadow(0 4px 14px rgba(200, 32, 26, .25)); }
+  .tg { pointer-events: auto; display: inline-block; margin-top: 10px; color: var(--dim); text-decoration: none; transition: color .2s; }
+  .tg:hover { color: var(--paper); }
+  .cue {
+    left: 50%; bottom: 26px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 10px;
+  }
+  .cue i { width: 1px; height: 38px; background: linear-gradient(var(--paper), transparent); transform-origin: top; animation: cue 2s ease-in-out infinite; }
+  @keyframes cue { 0% { transform: scaleY(0); opacity: 1; } 55% { transform: scaleY(1); opacity: 1; } 100% { transform: scaleY(1); opacity: 0; } }
+
+  /* загрузчик: мячик наполняется снизу вверх, потом уступает место «Листай» */
+  .loader {
+    position: fixed; left: 50%; bottom: clamp(26px, 2.2vw, 56px); transform: translateX(-50%); z-index: 5;
+    display: flex; flex-direction: column; align-items: center; gap: 10px; pointer-events: none;
+    font: 600 clamp(10px, .65vw, 14px)/1 "Manrope", sans-serif; letter-spacing: .22em; text-transform: uppercase;
+    color: var(--dim); transition: opacity .8s ease, transform .8s ease;
+  }
+  .loader svg { width: clamp(34px, 2.4vw, 52px); height: auto; animation: ld-float 2.4s ease-in-out infinite; }
+  .loader.done { opacity: 0; transform: translateX(-50%) translateY(10px); }
+  @keyframes ld-float { 0%, 100% { transform: translateY(0) rotate(-6deg); } 50% { transform: translateY(-4px) rotate(6deg); } }
+  .outro {
+    position: fixed; left: clamp(34px, 2.4vw, 64px); bottom: clamp(76px, 5.5vw, 140px); pointer-events: none; opacity: 0;
+    color: var(--paper); will-change: opacity, transform;
+  }
+  .outro h2 {
+    margin: 0; font: 900 clamp(44px, 7.5vw, 210px)/.9 "Unbounded", sans-serif; letter-spacing: -.04em;
+  }
+  .outro p {
+    margin: 18px 0 0; font: 600 clamp(11px, .72vw, 16px)/1.5 "Manrope", sans-serif; letter-spacing: .22em; text-transform: uppercase; color: var(--dim);
+  }
+  .outro p b { color: #e3241b; font-weight: 700; }
+  .outro .cta {
+    pointer-events: auto; display: inline-flex; align-items: center; gap: 12px; margin-top: 22px;
+    padding: 14px 20px; border: 1px solid rgba(242, 238, 230, .22); border-radius: 999px;
+    font: 700 clamp(11px, .75vw, 15px)/1 "Manrope", sans-serif; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--paper); text-decoration: none; transition: background .25s, border-color .25s;
+  }
+  .outro:not(.live) .cta { pointer-events: none; }
+  .outro .cta:hover { background: rgba(242, 238, 230, .08); border-color: rgba(242, 238, 230, .45); }
+  .outro .cta span { transition: transform .25s; }
+  .outro .cta:hover span { transform: translateX(4px); }
+  .outro .credit { margin-top: 8px; font-size: clamp(9px, .55vw, 12px); color: rgba(242, 238, 230, .3); }
+
+  .grain {
+    position: fixed; inset: -50%; pointer-events: none; opacity: .08; mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+    animation: grain .9s steps(6) infinite;
+  }
+  @keyframes grain {
+    0% { transform: translate(0, 0); } 20% { transform: translate(-3%, 2%); } 40% { transform: translate(2%, -3%); }
+    60% { transform: translate(-2%, -1%); } 80% { transform: translate(3%, 3%); } 100% { transform: translate(0, 0); }
+  }
+  .vignette { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(120% 90% at 50% 46%, transparent 52%, rgba(0, 0, 0, .6)); }
+
+  @media (max-width: 640px) {
+    .ui { font-size: 10px; letter-spacing: .18em; }
+    .tl, .tr { top: 20px; } .bl, .br { bottom: 22px; }
+    .tl, .bl { left: 18px; } .tr, .br { right: 18px; }
+    .cue span { display: none; } .cue { bottom: 18px; }
+    .outro { left: 18px; right: 18px; bottom: auto; top: 84px; }
+    .outro h2 { font-size: min(13vw, 7vh); }
+  }
+  @media (prefers-reduced-motion: reduce) { .grain, .cue i { animation: none; } }
+</style>
+</head>
+<body>
+<canvas id="scene" aria-label="3D-мяч под прожектором и надпись ФК РЭУ"></canvas>
+<div class="vignette"></div>
+<div class="grain"></div>
+<div class="ui" id="ui">
+  <div class="tl"><img class="crest" src="logo.png" alt="Эмблема ФК РЭУ"><span><b>РЭУ Football Club</b><br>с 2010 года</span></div>
+  <div class="tr">Сезон<br><b>2026</b><br><button id="snd" type="button">Звук · выкл</button><br><a class="tg" href="https://t.me/fcreu" target="_blank" rel="noopener">Telegram ↗</a></div>
+  <div class="bl" id="league">Студенческий футбол<br>Москвы</div>
+  <div class="br" id="score">Нажми на мяч<br>Потяни — закрутишь</div>
+  <div class="cue" id="cue"><span>Листай</span><i></i></div>
+</div>
+<div class="loader" id="loader" aria-live="polite">
+  <svg viewBox="0 0 40 40" aria-hidden="true">
+    <defs>
+      <clipPath id="ldBall"><circle cx="20" cy="20" r="17"/></clipPath>
+      <clipPath id="ldLiquid"><path id="ldWave" d="M0 40H40V40H0Z"/></clipPath>
+      <g id="ldArt">
+        <circle cx="20" cy="20" r="17" fill="#f2eee6"/>
+        <g clip-path="url(#ldBall)" fill="#c8201a">
+          <path d="M20 14l5.7 4.15-2.17 6.7h-7.06l-2.17-6.7z"/>
+          <circle cx="30" cy="6.2" r="4.6"/><circle cx="37.2" cy="25.6" r="4.6"/><circle cx="20" cy="38" r="4.6"/>
+          <circle cx="2.8" cy="25.6" r="4.6"/><circle cx="10" cy="6.2" r="4.6"/>
+        </g>
+        <path d="M20 14V3M25.7 18.15l10.47-3.4M23.53 24.85l6.46 8.9M16.47 24.85l-6.46 8.9M14.29 18.15L3.83 14.75"
+              stroke="#030507" stroke-opacity=".35" stroke-width=".6" fill="none"/>
+      </g>
+    </defs>
+    <use href="#ldArt" opacity=".12"/>
+    <use href="#ldArt" clip-path="url(#ldLiquid)"/>
+    <circle cx="20" cy="20" r="17" fill="none" stroke="#f2eee6" stroke-opacity=".45" stroke-width=".8"/>
+  </svg>
+  <span id="ldText">Загрузка · 0%</span>
+</div>
+<div class="outro" id="outro">
+  <h2>С 2010<br>года</h2>
+  <p>Играем за <b>красно-жёлтых</b></p>
+  <a class="cta" href="https://t.me/fcreu" target="_blank" rel="noopener">Следить за командой в Telegram · @fcreu <span>→</span></a>
+  <p class="credit">Снимки Земли: NASA Visible Earth</p>
+</div>
+<div class="scroll"></div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "./vendor/three/build/three.module.js",
+  "three/addons/": "./vendor/three/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from "three";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
+import { mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
+
+// ?still — служебный режим для превью: сразу готовый первый кадр, без заставки и анимаций
+const still = location.search.includes("still");
+const reduce = still || matchMedia("(prefers-reduced-motion: reduce)").matches;
+const mobile = matchMedia("(max-width: 760px), (pointer: coarse)").matches;
+const sm = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+const R = 0.5;                                   // радиус мяча
+const LAMP = new THREE.Vector3(0, 6.8, 0.6);     // прожектор
+
+// ── рендер ──
+const canvas = document.getElementById("scene");
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: "high-performance" });
+const PR = Math.min(devicePixelRatio, mobile ? 1.6 : 2);
+renderer.setPixelRatio(PR);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x020306);
+const camera = new THREE.PerspectiveCamera(28, 1, 0.3, 1200);
+const RP = 30;                                   // радиус планеты: поле стоит на её макушке
+const PLANET_C = new THREE.Vector3(0, -RP - 0.08, 0);   // на волосок ниже газона, чтобы они не мерцали друг сквозь друга
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(renderer), 0.04).texture;
+
+const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: mobile ? 0 : 4 }));
+composer.setPixelRatio(PR);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.12, 0.5, 0.95);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+const U = {
+  uTime: { value: 0 }, uLight: { value: 0 },
+  uSpot: { value: new THREE.Vector2() }, uBall: { value: new THREE.Vector4(0, R, 0, R) },
+  uPR: { value: PR },
+  uBeam: { value: 1 }, uFade: { value: 1 }, uPool: { value: 2.5 },  // переход: луч, надпись, пятно света
+  uShow: { value: 0 }, uPillar: { value: 0 }, uCurve: { value: 1 / (2 * RP) }               // планета: видимость и кривизна поля
+};
+
+// ── мяч: 12 пятиугольников + 20 шестиугольников, швы вдавлены, панели чуть выпуклые ──
+function buildBall() {
+  const phi = (1 + Math.sqrt(5)) / 2, ip = 1 / phi, C = [];
+  for (const [a, b] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) C.push([0, a, b * phi], [a, b * phi, 0], [a * phi, 0, b]);
+  for (const x of [1, -1]) for (const y of [1, -1]) for (const z of [1, -1]) C.push([x, y, z]);
+  for (const [a, b] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) C.push([0, a * ip, b * phi], [a * ip, b * phi, 0], [a * phi, 0, b * ip]);
+  const centers = C.map(c => new THREE.Vector3(...c).normalize());
+
+  let g = new THREE.IcosahedronGeometry(1, mobile ? 48 : 72);
+  g.deleteAttribute("normal"); g.deleteAttribute("uv");
+  g = mergeVertices(g, 1e-5);
+  const pos = g.attributes.position, col = new Float32Array(pos.count * 3), v = new THREE.Vector3();
+  const white = [0.86, 0.845, 0.80], red = [0.52, 0.018, 0.012], seamC = [0.05, 0.045, 0.04];
+  // у усечённого икосаэдра шов лежит в 16,48° от центра пятиугольника и в 20,90° от центра шестиугольника
+  const T5 = THREE.MathUtils.degToRad(16.48), T6 = THREE.MathUtils.degToRad(20.9);
+  for (let i = 0; i < pos.count; i++) {
+    v.fromBufferAttribute(pos, i).normalize();
+    let d1 = 9, d2 = 9, k = 0;
+    for (let j = 0; j < 32; j++) {
+      const d = Math.acos(Math.min(1, Math.max(-1, v.dot(centers[j])))) - (j < 12 ? T5 : T6);
+      if (d < d1) { d2 = d1; d1 = d; k = j; } else if (d < d2) d2 = d;
+    }
+    const e = d2 - d1;
+    const seam = 1 - sm(0.0, 0.026, e), puff = sm(0.0, 0.16, e);
+    const rad = 1 + 0.011 * puff - 0.018 * seam;
+    pos.setXYZ(i, v.x * rad, v.y * rad, v.z * rad);
+    const base = k < 12 ? red : white;
+    for (let c = 0; c < 3; c++) col[i * 3 + c] = base[c] + (seamC[c] - base[c]) * seam * 0.9;
+  }
+  g.setAttribute("color", new THREE.BufferAttribute(col, 3));
+  g.computeVertexNormals();
+  const m = new THREE.MeshPhysicalMaterial({
+    vertexColors: true, roughness: 0.4, metalness: 0, clearcoat: 0.7, clearcoatRoughness: 0.28, envMapIntensity: 0.4
+  });
+  const mesh = new THREE.Mesh(g, m);
+  mesh.scale.setScalar(R);
+  return mesh;
+}
+const ball = buildBall();
+ball.material.transparent = true;                // мяч рисуется после надписи — он перед ней
+ball.renderOrder = 2;
+scene.add(ball);
+
+// ── свет ──
+const spot = new THREE.SpotLight(0xfff0d8, 0, 0, 0.36, 0.6, 2);
+spot.position.copy(LAMP);
+scene.add(spot, spot.target);
+const rim = new THREE.DirectionalLight(0x7d96ff, 0);
+rim.position.set(-3, 2.2, -4);
+scene.add(rim);
+const hemi = new THREE.HemisphereLight(0x1d2b48, 0x030603, 0);
+scene.add(hemi);
+
+// ── газон: травинки (instanced) + земля под ними ──
+const grassLight = `
+  uniform vec2 uSpot; uniform float uLight, uPool, uShow; uniform vec4 uBall;
+  // при отлёте край поля перекрашивается в цвет суши планеты — поле «врастает» в неё
+  vec3 blendPlanet(vec3 c, vec2 p) { return mix(c, vec3(0.045, 0.075, 0.03), uShow * smoothstep(2.6, 5.2, length(p))); }
+  float pool(vec2 p) { return 1.0 - smoothstep(0.25, uPool, length(p - uSpot)); }
+  float contact(vec2 p) {
+    float hgt = max(uBall.y - uBall.w, 0.0);
+    float d = length(p - (uBall.xz + vec2(0.0, -0.09) * hgt));
+    float s = mix(0.22, 1.0, smoothstep(uBall.w * (0.3 + hgt * 0.45), uBall.w * (1.05 + hgt * 0.9), d));
+    return mix(1.0, s, 1.0 - smoothstep(0.0, 2.8, hgt));
+  }
+  float chalk(vec2 p) {                                   // центральный круг, средняя линия, центральная точка
+    float w = 0.034;
+    float c = 1.0 - smoothstep(w, w + 0.014, abs(length(p) - 1.85));
+    c = max(c, 1.0 - smoothstep(w, w + 0.014, abs(p.y)));
+    c = max(c, 1.0 - smoothstep(0.075, 0.09, length(p)));
+    return c;
+  }`;
+{
+  const N = mobile ? 34000 : 60000, RAD = 5.2;
+  const blade = new THREE.PlaneGeometry(0.022, 1, 1, 5);
+  blade.translate(0, 0.5, 0);
+  const rnd = new Float32Array(N);
+  const grass = new THREE.InstancedMesh(blade, new THREE.ShaderMaterial({
+    uniforms: U, side: THREE.DoubleSide,
+    vertexShader: `
+      attribute float aRand;
+      uniform float uTime, uCurve; uniform vec4 uBall;
+      varying float vH; varying vec3 vW; varying float vR; varying vec2 vRoot;
+      void main() {
+        vec3 p = position; float h = uv.y;
+        vRoot = (modelMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xz;
+        p.x *= 1.0 - h * 0.85;
+        vec4 w = modelMatrix * instanceMatrix * vec4(p, 1.0);
+        float s = sin(uTime * 1.1 + w.x * 1.7 + w.z * 1.3 + aRand * 6.28) * 0.6 + sin(uTime * 2.4 + aRand * 12.0) * 0.25;
+        w.x += s * 0.014 * h * h; w.z += s * 0.009 * h * h;
+        vec2 d = w.xz - uBall.xz; float dl = length(d);
+        float push = (1.0 - smoothstep(uBall.w * 0.25, uBall.w * 0.8, dl)) * (1.0 - smoothstep(0.0, 0.18, uBall.y - uBall.w));
+        w.xz += d / max(dl, 1e-4) * push * 0.06 * h; w.y -= push * 0.035 * h;
+        vH = h; vW = w.xyz; vR = aRand;
+        w.y -= dot(w.xz, w.xz) * uCurve;                                  // поле повторяет кривизну планеты
+        gl_Position = projectionMatrix * viewMatrix * w;
+      }`,
+    fragmentShader: grassLight + `
+      varying float vH; varying vec3 vW; varying float vR; varying vec2 vRoot;
+      void main() {
+        if (length(vRoot) > mix(6.0, 2.3, uShow) - 0.5 * vR) discard;   // при отлёте вокруг стадиона видна Земля
+        vec3 root = vec3(0.006, 0.02, 0.005);
+        vec3 tip = mix(vec3(0.05, 0.16, 0.03), vec3(0.13, 0.27, 0.05), vR);
+        vec3 c = mix(root, tip, smoothstep(0.0, 1.0, vH));
+        c *= 0.86 + 0.14 * step(0.5, fract(vW.x * 0.42 + 0.21));           // полосы стрижки
+        c = mix(c, vec3(0.42, 0.43, 0.39) * (0.35 + 0.65 * vH), chalk(vRoot) * 0.9);
+        float L = pool(vW.xz);
+        vec3 lit = c * (0.035 + 2.8 * L * L * uLight) * contact(vW.xz);
+        float hh = clamp(vH, 0.0, 1.0);                                       // pow от отрицательного = NaN на Metal
+        lit += vec3(0.55, 0.62, 0.38) * hh * hh * hh * hh * hh * hh * hh * L * 0.16 * uLight;  // блик на кончиках
+        lit *= 1.0 - smoothstep(3.6, 5.2, length(vW.xz));
+        gl_FragColor = vec4(clamp(blendPlanet(lit, vW.xz), 0.0, 4.0), 1.0);
+      }`
+  }), N);
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), s = new THREE.Vector3(), p = new THREE.Vector3();
+  for (let i = 0; i < N; i++) {
+    const r = Math.sqrt(Math.random()) * (Math.random() < 0.45 ? 2.6 : RAD), a = Math.random() * Math.PI * 2;   // в центре гуще
+    p.set(Math.cos(a) * r, 0, Math.sin(a) * r);
+    e.set((Math.random() - .5) * 1.1, Math.random() * Math.PI, (Math.random() - .5) * 1.1);   // наклон — травинки видно и сверху
+    q.setFromEuler(e);
+    s.set(0.7 + Math.random() * 0.8, 0.07 + Math.random() * 0.08, 1);
+    grass.setMatrixAt(i, m.compose(p, q, s));
+    rnd[i] = Math.random();
+  }
+  blade.setAttribute("aRand", new THREE.InstancedBufferAttribute(rnd, 1));
+  grass.frustumCulled = false;
+  scene.add(grass);
+
+  const ground = new THREE.Mesh(new THREE.RingGeometry(0, RAD + 0.4, 128, 64), new THREE.ShaderMaterial({   // мелкая сетка — изгиб по планете плавный
+    uniforms: U,
+    vertexShader: `uniform float uCurve; varying vec3 vW;
+      void main() { vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; w.y -= dot(w.xz, w.xz) * uCurve; gl_Position = projectionMatrix * viewMatrix * w; }`,
+    fragmentShader: grassLight + `
+      varying vec3 vW;
+      void main() {
+        if (length(vW.xz) > mix(6.0, 2.3, uShow) - 0.35) discard;
+        float L = pool(vW.xz);
+        float stripe = 0.86 + 0.14 * step(0.5, fract(vW.x * 0.42 + 0.21));
+        vec3 c = mix(vec3(0.014, 0.04, 0.009) * stripe, vec3(0.34, 0.35, 0.32), chalk(vW.xz)) * (0.04 + 2.2 * L * L * uLight) * contact(vW.xz);
+        c *= 1.0 - smoothstep(3.6, 5.4, length(vW.xz));
+        gl_FragColor = vec4(blendPlanet(c, vW.xz), 1.0);
+      }`
+  }));
+  ground.rotation.x = -Math.PI / 2;
+  ground.renderOrder = -1;
+  scene.add(ground);
+}
+
+// ── Земля под полем: снимки NASA (день, ночь, рельеф, облака); поле стоит ровно на Москве ──
+const big = !mobile && renderer.capabilities.maxTextureSize >= 8192;    // 8K на компьютере, 4K на телефоне
+const earthLoad = new THREE.LoadingManager();
+let earthReady = false, earthProgress = 0;
+earthLoad.onProgress = (_, loaded, total) => { earthProgress = loaded / total; };
+earthLoad.onLoad = () => { earthReady = true; readScroll(); };
+const texLoader = new THREE.TextureLoader(earthLoad);
+function earthTex(name, srgb) {
+  const t = texLoader.load(`textures/earth_${name}_${big ? "8k" : "4k"}.jpg`);
+  if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  t.wrapS = THREE.RepeatWrapping;       // по долготе карта замкнута — облака плывут без шва
+  return t;
+}
+const earthU = {
+  ...U,
+  uDay: { value: earthTex("day", true) }, uNight: { value: earthTex("night", true) },
+  uHeight: { value: earthTex("height") }, uClouds: { value: earthTex("clouds") },
+  uSun: { value: new THREE.Vector3(-0.8, -0.12, 0.58).normalize() },   // Москва — сразу за закатом
+  uCloudShift: { value: 0 }, uCenter: { value: PLANET_C }
+};
+const earthVS = `
+  varying vec2 vUv; varying vec3 vN; varying vec3 vWP;
+  void main() {
+    vUv = uv;
+    vN = normalize(mat3(modelMatrix) * normal);
+    vec4 w = modelMatrix * vec4(position, 1.0); vWP = w.xyz;
+    gl_Position = projectionMatrix * viewMatrix * w;
+  }`;
+const planet = new THREE.Mesh(new THREE.SphereGeometry(RP, 192, 144), new THREE.ShaderMaterial({
+  uniforms: earthU, vertexShader: earthVS,
+  fragmentShader: `
+    uniform sampler2D uDay, uNight, uHeight, uClouds; uniform vec3 uSun, uCenter; uniform float uShow, uCloudShift;
+    varying vec2 vUv; varying vec3 vN; varying vec3 vWP;
+    // рельеф по карте высот: нормаль наклоняется по градиенту высоты (как bumpMap в three.js)
+    vec3 bump(vec3 N) {
+      vec2 dx = dFdx(vUv), dy = dFdy(vUv);
+      if (abs(dx.x) > 0.5) dx.x = 0.0;                     // шов карты на 180° долготы
+      if (abs(dy.x) > 0.5) dy.x = 0.0;
+      float h0 = texture2D(uHeight, vUv).r;
+      float hx = (texture2D(uHeight, vUv + dx).r - h0) * 0.7, hy = (texture2D(uHeight, vUv + dy).r - h0) * 0.7;
+      vec3 sx = dFdx(vWP), sy = dFdy(vWP), r1 = cross(sy, N), r2 = cross(N, sx);
+      float det = dot(sx, r1);
+      return normalize(abs(det) * N - sign(det) * (hx * r1 + hy * r2));
+    }
+    void main() {
+      vec3 N0 = normalize(vN), V = normalize(cameraPosition - vWP);
+      float land = smoothstep(0.004, 0.02, texture2D(uHeight, vUv).r);   // в карте высот океан = 0
+      vec3 N = normalize(mix(N0, bump(N0), land));
+      float ndl0 = dot(N0, uSun), day = smoothstep(-0.12, 0.35, ndl0);
+      float shadow = texture2D(uClouds, vUv + vec2(uCloudShift + 0.0012, 0.0006)).r;   // тень облаков
+      vec3 c = texture2D(uDay, vUv).rgb * (max(dot(N, uSun), 0.0) * 1.35 + 0.015) * (1.0 - 0.45 * shadow);
+      vec3 H = normalize(uSun + V);
+      c += vec3(1.0, 0.95, 0.86) * pow(max(dot(N0, H), 0.0), 90.0) * (1.0 - land) * 0.3 * day * (1.0 - shadow);
+      c += texture2D(uNight, vUv).rgb * vec3(1.0, 0.8, 0.55) * 0.85 * (1.0 - smoothstep(-0.25, 0.08, ndl0));
+      // дымка атмосферы к краю диска: голубая днём, тёплая у границы дня и ночи
+      float fres = pow(1.0 - max(dot(N0, V), 0.0), 2.6);
+      vec3 sky = mix(vec3(0.9, 0.42, 0.18), vec3(0.32, 0.56, 1.0), smoothstep(-0.05, 0.35, ndl0));
+      c = mix(c, sky * (0.2 + 0.8 * day), fres * 0.55 * smoothstep(-0.3, 0.15, ndl0));
+      // свет прожектора: тёплое пятно на Москве и мягкий ореол вокруг — видно с орбиты
+      float up = normalize(vWP - uCenter).y;
+      c += vec3(1.0, 0.82, 0.55) * pow(smoothstep(0.985, 0.999, up), 2.0) * 0.18;   // тёплый ореол прожектора вокруг поля
+      gl_FragColor = vec4(c * uShow, 1.0);
+    }`
+}));
+planet.position.copy(PLANET_C);
+planet.renderOrder = -2;                         // сначала Земля, потом газон поверх неё
+scene.add(planet);
+
+// облака — отдельная оболочка чуть выше поверхности, медленно плывут; над самим полем их нет
+const clouds = new THREE.Mesh(new THREE.SphereGeometry(RP * 1.006, 192, 144), new THREE.ShaderMaterial({
+  uniforms: earthU, vertexShader: earthVS, transparent: true, depthWrite: false,
+  fragmentShader: `
+    uniform sampler2D uClouds; uniform vec3 uSun, uCenter; uniform float uShow, uCloudShift;
+    varying vec2 vUv; varying vec3 vN; varying vec3 vWP;
+    void main() {
+      float a = smoothstep(0.1, 0.85, texture2D(uClouds, vUv + vec2(uCloudShift, 0.0)).r);
+      a *= 1.0 - smoothstep(0.965, 0.982, normalize(vWP - uCenter).y);
+      float ndl = dot(normalize(vN), uSun);
+      gl_FragColor = vec4(vec3(1.0) * (0.02 + 1.05 * max(ndl, 0.0)), a * uShow * (0.2 + 0.8 * smoothstep(-0.15, 0.3, ndl)));
+    }`
+}));
+planet.add(clouds);
+clouds.position.set(0, 0, 0);
+
+// свечение атмосферы за краем планеты — тонкое кольцо, не яркое
+const atmo = new THREE.Mesh(new THREE.SphereGeometry(RP * 1.035, 96, 72), new THREE.ShaderMaterial({
+  uniforms: earthU, transparent: true, depthWrite: false, side: THREE.BackSide, blending: THREE.AdditiveBlending,
+  vertexShader: `varying vec3 vNV; varying vec3 vN;
+    void main() { vNV = normalize(normalMatrix * normal); vN = normalize(mat3(modelMatrix) * normal);
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  fragmentShader: `uniform vec3 uSun; uniform float uShow; varying vec3 vNV; varying vec3 vN;
+    void main() {
+      float i = pow(clamp(1.0 + vNV.z, 0.0, 1.0), 7.0);
+      float day = smoothstep(-0.3, 0.4, dot(normalize(vN), uSun));
+      gl_FragColor = vec4(vec3(0.3, 0.55, 1.0) * i * day * 0.45 * uShow, 1.0);
+    }`
+}));
+atmo.position.copy(PLANET_C);
+scene.add(atmo);
+
+// луч прожектора в небо над Москвой — тусклый столб, виден при отлёте
+const PILLAR_H = 26;
+const pillarGeo = new THREE.CylinderGeometry(0.35, 1.6, PILLAR_H, 48, 1, true);
+pillarGeo.translate(0, PILLAR_H / 2, 0);
+const pillar = new THREE.Mesh(pillarGeo, new THREE.ShaderMaterial({
+  uniforms: { ...U, uH: { value: PILLAR_H } },
+  transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending,
+  vertexShader: `uniform float uH; varying float vY; varying vec3 vN; varying vec3 vV;
+    void main() { vY = position.y / uH; vec4 mv = modelViewMatrix * vec4(position, 1.0);
+      vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }`,
+  fragmentShader: `uniform float uPillar; varying float vY; varying vec3 vN; varying vec3 vV;
+    void main() {
+      float f = pow(abs(dot(normalize(vN), normalize(vV))), 2.0);
+      float a = f * pow(1.0 - vY, 2.2) * smoothstep(0.0, 0.04, vY) * uPillar;
+      gl_FragColor = vec4(vec3(1.0, 0.9, 0.75) * a * 0.22, 1.0);
+    }`
+}));
+scene.add(pillar);
+
+// поворачиваем Землю так, чтобы Москва (55,75° с. ш., 37,62° в. д.) оказалась на макушке — под полем
+const MOSCOW = (() => {
+  const u = (37.62 + 180) / 360, th = THREE.MathUtils.degToRad(90 - 55.75), ph = u * Math.PI * 2;
+  const d = new THREE.Vector3(-Math.cos(ph) * Math.sin(th), Math.cos(th), Math.sin(ph) * Math.sin(th));
+  return new THREE.Quaternion().setFromUnitVectors(d, new THREE.Vector3(0, 1, 0));
+})();
+let spin = 0;
+const spinQ = new THREE.Quaternion(), UP = new THREE.Vector3(0, 1, 0);
+planet.quaternion.copy(MOSCOW);
+
+// звёзды: тусклые и мелкие, появляются только при отлёте
+{
+  const N = 900, pos = new Float32Array(N * 3), v = new THREE.Vector3();
+  for (let i = 0; i < N; i++) {
+    v.set(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1).normalize().multiplyScalar(500 + Math.random() * 200);
+    pos.set([v.x, v.y, v.z], i * 3);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  const stars = new THREE.Points(g, new THREE.ShaderMaterial({
+    uniforms: U, transparent: true, depthWrite: false,
+    vertexShader: `uniform float uPR, uShow; varying float vA;
+      void main() { gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        float s = fract(sin(dot(position, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
+        gl_PointSize = (0.8 + 1.2 * s) * uPR; vA = (0.25 + 0.5 * s) * uShow; }`,
+    fragmentShader: `varying float vA;
+      void main() { float d = length(gl_PointCoord - 0.5); gl_FragColor = vec4(vec3(0.85, 0.88, 1.0), (1.0 - smoothstep(0.2, 0.5, d)) * vA); }`
+  }));
+  stars.frustumCulled = false;
+  scene.add(stars);
+}
+
+// ── луч прожектора ──
+const CONE_H = 7.4;
+const coneGeo = new THREE.ConeGeometry(2.25, CONE_H, 96, 1, true);
+coneGeo.translate(0, -CONE_H / 2, 0);                 // вершина в начале координат
+const cone = new THREE.Mesh(coneGeo, new THREE.ShaderMaterial({
+  uniforms: { ...U, uH: { value: CONE_H } },
+  transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending,
+  vertexShader: `
+    uniform float uH; varying float vY; varying vec3 vN; varying vec3 vV; varying vec3 vW;
+    void main() {
+      vY = -position.y / uH;
+      vW = (modelMatrix * vec4(position, 1.0)).xyz;
+      vec4 mv = modelViewMatrix * vec4(position, 1.0);
+      vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz);
+      gl_Position = projectionMatrix * mv;
+    }`,
+  fragmentShader: `
+    uniform float uTime, uLight, uBeam; varying float vY; varying vec3 vN; varying vec3 vV; varying vec3 vW;
+    void main() {
+      float f = pow(abs(dot(normalize(vN), normalize(vV))), 2.2);
+      float n = sin(vW.x * 2.7 + uTime * 0.35) * sin(vW.y * 1.9 - uTime * 0.28) * 0.5 + 0.5;
+      float a = f * (0.55 + 0.45 * n) * (1.0 - smoothstep(0.72, 0.98, vY)) * (0.35 + 0.65 * (1.0 - vY));
+      gl_FragColor = vec4(vec3(1.0, 0.94, 0.86) * a * 0.035 * uLight * uBeam, 1.0);
+    }`
+}));
+cone.position.copy(LAMP);
+scene.add(cone);
+
+// звук: глухой удар по мячу — синус с падающей частотой + короткий шорох; выключен, пока не включат
+let actx = null, soundOn = false;
+const sndBtn = document.getElementById("snd");
+sndBtn.addEventListener("click", () => {
+  soundOn = !soundOn;
+  sndBtn.textContent = soundOn ? "Звук · вкл" : "Звук · выкл";
+  sndBtn.classList.toggle("on", soundOn);
+  if (soundOn) { actx ??= new AudioContext(); actx.resume(); thump(1.2, 1); }
+});
+function thump(power, kick) {
+  if (!soundOn || !actx) return;
+  const t = actx.currentTime, out = actx.destination;
+  const o = actx.createOscillator(), g = actx.createGain();
+  o.frequency.setValueAtTime(kick ? 150 : 95, t);
+  o.frequency.exponentialRampToValueAtTime(kick ? 48 : 38, t + 0.14);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(Math.min(0.7, 0.12 + power * 0.13), t + 0.004);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + (kick ? 0.24 : 0.18));
+  o.connect(g).connect(out); o.start(t); o.stop(t + 0.26);
+  const n = Math.floor(actx.sampleRate * 0.06), buf = actx.createBuffer(1, n, actx.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 3);
+  const src = actx.createBufferSource(), f = actx.createBiquadFilter(), ng = actx.createGain();
+  src.buffer = buf; f.type = "bandpass"; f.frequency.value = kick ? 1900 : 900; f.Q.value = 0.8;
+  ng.gain.value = Math.min(0.35, 0.06 + power * 0.06) * (kick ? 1 : 0.6);
+  src.connect(f).connect(ng).connect(out); src.start(t);
+}
+
+function landed(power) { thump(power, false); }
+
+// ── надпись: холст → текстура на плоскости за мячом ──
+const tCanvas = document.createElement("canvas"), tctx = tCanvas.getContext("2d");
+const tTex = new THREE.CanvasTexture(tCanvas);
+tTex.generateMipmaps = false; tTex.minFilter = THREE.LinearFilter;
+const textMat = new THREE.ShaderMaterial({
+  uniforms: { ...U, uMap: { value: tTex }, uReveal: { value: 0 } },
+  transparent: true, depthWrite: false, depthTest: false,   // надпись поверх газона, её ничто не срежет
+  vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  fragmentShader: `
+    uniform sampler2D uMap; uniform float uReveal, uLight, uFade; varying vec2 vUv;
+    void main() {
+      float m = smoothstep(0.0, 0.16, uReveal * 1.18 - vUv.x);
+      vec4 t = texture2D(uMap, vec2(vUv.x, vUv.y + (1.0 - m) * 0.035));
+      float glow = 1.0 - smoothstep(0.0, 0.8, length((vUv - vec2(0.5, 0.52)) * vec2(1.0, 1.5)));
+      vec3 c = vec3(0.9, 0.87, 0.82) * (0.5 + 0.42 * glow * uLight);
+      gl_FragColor = vec4(c, t.a * m * uFade);
+    }`
+});
+const textPlane = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), textMat);
+textPlane.renderOrder = 1;
+scene.add(textPlane);
+
+let W = 1, H = 1, portrait = false;
+const tmp = new THREE.Vector3();
+const toPx = (x, y, z) => { tmp.set(x, y, z).project(camera); return { x: (tmp.x + 1) / 2 * W, y: (1 - tmp.y) / 2 * H }; };
+function drawText() {
+  // чёткость надписи: в пикселях экрана (с учётом Retina), но не больше предела текстуры видеокарты
+  const k = Math.min(renderer.getPixelRatio(), Math.min(8192, renderer.capabilities.maxTextureSize) / W);
+  const cw = Math.round(W * k), ch = Math.round(H * k);
+  if (cw !== tCanvas.width || ch !== tCanvas.height) {
+    tCanvas.width = cw; tCanvas.height = ch;
+    tTex.dispose();                     // размер изменился (окно развернули) — старую текстуру на видеокарте выбрасываем
+  }
+  const ctx = tctx; ctx.setTransform(k, 0, 0, k, 0, 0); ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = "#fff";
+  const c = toPx(0, R, 0), top = toPx(0, 2 * R, 0), rpx = c.y - top.y;
+  const font = s => `900 ${s}px Unbounded`;
+  if (portrait) {
+    const fs = Math.min(W * 0.33, H * 0.17), cap = fs * 0.73;
+    ctx.font = font(fs); ctx.letterSpacing = `${-fs * 0.04}px`; ctx.textAlign = "center";
+    const b2 = top.y - fs * 0.16, b1 = b2 - cap - fs * 0.14;
+    ctx.fillText("ФК", W / 2, b1); ctx.fillText("РЭУ", W / 2, b2);
+  } else {
+    let fs = rpx * 2.6;
+    const gap = rpx * 2.7;                          // зазор под мяч не сжимаем — уменьшаем только шрифт
+    ctx.font = font(fs); ctx.letterSpacing = `${-fs * 0.04}px`;
+    // мяч в центре, а «РЭУ» шире «ФК» — запас считаем по более длинной половине
+    const half = Math.max(ctx.measureText("ФК").width, ctx.measureText("РЭУ").width);
+    const room = W / 2 - gap / 2 - W * 0.06;
+    if (half > room) fs *= Math.max(0.3, room / half);
+    ctx.font = font(fs); ctx.letterSpacing = `${-fs * 0.04}px`;
+    const base = c.y + fs * 0.73 / 2;
+    ctx.textAlign = "right"; ctx.fillText("ФК", c.x - gap / 2, base);
+    ctx.textAlign = "left"; ctx.fillText("РЭУ", c.x + gap / 2, base);
+  }
+  tTex.needsUpdate = true;
+}
+
+const HERO = { pos: new THREE.Vector3(), look: new THREE.Vector3(), r: 1, el: 0 };
+const TOP = { look: new THREE.Vector3(0, 0.45, 0.2), r: 10.5, el: THREE.MathUtils.degToRad(82), az: 0.62 };
+const FAR = { r: 190, el: THREE.MathUtils.degToRad(28) };     // финал: вся планета в кадре
+const look = new THREE.Vector3();
+const easeIO = x => x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+// P — прокрутка 0..1: до 0.35 кран над полем, дальше отлёт к планете и полный оборот; mx/my — параллакс
+function placeCamera(P, mx, my) {
+  const a = easeIO(Math.min(1, P / 0.35)), b = easeIO(Math.max(0, (P - 0.35) / 0.65));
+  look.lerpVectors(HERO.look, TOP.look, a);
+  let r = HERO.r + (TOP.r - HERO.r) * a;
+  let el = HERO.el + (TOP.el - HERO.el) * a;
+  let az = TOP.az * a;
+  // сначала отлетаем, держа поле в центре, и только потом переводим взгляд на центр планеты
+  if (b > 0) { look.lerp(PLANET_C, b * b); r += (FAR.r - r) * b; el += (FAR.el - el) * b; az += Math.PI * 2 * b; }
+  el += my * 0.012 * (1 - a); az += mx * 0.022 * (1 - a);   // лёгкий параллакс только у газона
+  camera.position.set(look.x + r * Math.cos(el) * Math.sin(az), look.y + r * Math.sin(el), look.z + r * Math.cos(el) * Math.cos(az));
+  camera.lookAt(look);
+  // в финале планета уходит вправо (на телефоне — вниз), чтобы не стоять за «С 2010 года»
+  if (b > 0.001) camera.setViewOffset(W, H, portrait ? 0 : -W * 0.17 * b * b, portrait ? -H * 0.12 * b * b : 0, W, H);
+  else camera.clearViewOffset();
+  camera.updateProjectionMatrix();
+  // надпись всегда в одном месте экрана — её не срежет ни газон, ни край поля
+  camera.getWorldDirection(tmp);
+  textPlane.position.copy(camera.position).addScaledVector(tmp, TEXT_D);
+  textPlane.quaternion.copy(camera.quaternion);
+}
+const TEXT_D = 8;
+
+function layout() {
+  W = innerWidth; H = innerHeight; portrait = W / H < 0.85;
+  renderer.setSize(W, H, false); composer.setSize(W, H); bloom.setSize(W, H);
+  camera.aspect = W / H;
+  // первый кадр — низко у газона; финал прокрутки — сверху над центральным кругом
+  if (portrait) { camera.fov = 34; HERO.pos.set(0, 1.25, 8.8); HERO.look.set(0, 1.75, 0); TOP.r = 12.5; }
+  else { camera.fov = 28; HERO.pos.set(0, 0.95, 6.8); HERO.look.set(0, 0.62, 0); TOP.r = 10.5; }
+  if (portrait) { TOP.r = 17; FAR.r = 280; } else FAR.r = 190;
+  const v = HERO.pos.clone().sub(HERO.look);
+  HERO.r = v.length(); HERO.el = Math.asin(v.y / HERO.r);
+  camera.updateProjectionMatrix();
+  placeCamera(0, 0, 0);
+  const ph = 2 * TEXT_D * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  textPlane.scale.set(ph * camera.aspect, ph, 1);
+  drawText();
+}
+
+// ── физика мяча и управление ──
+const st = {
+  p: new THREE.Vector3(0, 60, 0), v: new THREE.Vector3(), w: new THREE.Vector3(0, 0.25, 0),
+  spawned: false, juggles: 0, best: 0, resting: true
+};
+const ui = document.getElementById("ui"), score = document.getElementById("score");
+function showScore() {
+  score.innerHTML = st.juggles > 0
+    ? `Чеканка <b>${st.juggles}</b><br>Рекорд ${st.best}`
+    : st.best > 0 ? `Рекорд <b>${st.best}</b><br>Нажми на мяч` : "Нажми на мяч<br>Потяни — закрутишь";
+}
+function kick() {
+  if (!st.spawned) return;
+  st.v.y = Math.max(st.v.y, 0) * 0.3 + 3.3 + Math.random() * 0.7;
+  st.v.x += (Math.random() - 0.5) * 0.7 - st.p.x * 0.9;
+  st.v.z += (Math.random() - 0.5) * 0.3 - st.p.z * 0.9;
+  st.w.x = -7 - Math.random() * 5; st.w.y += (Math.random() - 0.5) * 5; st.w.z = (Math.random() - 0.5) * 3;
+  st.juggles++; st.best = Math.max(st.best, st.juggles); st.resting = false;
+  thump(2.2, true);
+  showScore();
+}
+
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), mouse = new THREE.Vector2(0, 0);
+const overBall = e => {
+  ndc.set(e.clientX / W * 2 - 1, -(e.clientY / H) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  return ray.ray.distanceToPoint(st.p) < R * 1.2;
+};
+let drag = null;
+canvas.addEventListener("pointerdown", e => {
+  if (!overBall(e)) return;
+  drag = { x: e.clientX, y: e.clientY, moved: 0 };
+  canvas.setPointerCapture(e.pointerId);
+  document.body.classList.add("grabbing");
+});
+addEventListener("pointermove", e => {
+  mouse.set(e.clientX / W * 2 - 1, -(e.clientY / H) * 2 + 1);
+  if (drag) {
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    drag.moved += Math.hypot(dx, dy); drag.x = e.clientX; drag.y = e.clientY;
+    st.w.y += dx * 0.05; st.w.x += dy * 0.05;
+  } else document.body.classList.toggle("grab", overBall(e));
+});
+addEventListener("pointerup", () => {
+  if (drag && drag.moved < 8) kick();
+  drag = null; document.body.classList.remove("grabbing");
+});
+
+const dq = new THREE.Quaternion(), axis = new THREE.Vector3(), spotXZ = new THREE.Vector2();
+function physics(dt) {
+  if (!st.spawned) return;
+  st.v.y -= 9.8 * 0.82 * dt;
+  st.v.x += -st.p.x * 2.6 * dt; st.v.z += -st.p.z * 2.6 * dt;
+  st.v.x *= 1 - 0.7 * dt; st.v.z *= 1 - 0.7 * dt;
+  st.p.addScaledVector(st.v, dt);
+  if (st.p.y < R) {
+    st.p.y = R;
+    if (st.v.y < -0.7) { landed(-st.v.y); st.v.y = -st.v.y * 0.46; st.w.multiplyScalar(0.7); }
+    else {
+      st.v.y = 0;
+      if (st.juggles) { st.juggles = 0; showScore(); }
+      st.resting = true;
+    }
+  }
+  const ground = st.p.y <= R + 1e-3;
+  if (ground) { st.w.z += (-st.v.x / R - st.w.z) * Math.min(1, dt * 8); st.w.x += (st.v.z / R - st.w.x) * Math.min(1, dt * 3); }
+  st.w.multiplyScalar(1 - (ground ? 1.2 : 0.1) * dt);
+  if (ground && !drag && !reduce) st.w.y += (0.22 - st.w.y) * dt * 0.8;   // медленно поворачивается на месте
+  const sp = st.w.length();
+  if (sp > 1e-4) { dq.setFromAxisAngle(axis.copy(st.w).divideScalar(sp), sp * dt); ball.quaternion.premultiply(dq); }
+  ball.position.copy(st.p);
+}
+
+// заставка: прожектор мигает и разгорается, мяч падает в луч, надпись проявляется
+function lampLevel(t) {
+  if (reduce) return 1;
+  return sm(0.3, 2.0, t);                          // свет плавно разгорается
+}
+
+
+// загрузчик: показанный процент плавно догоняет настоящий, но не быстрее, чем за ~1,4 с — чтобы наполнение было видно
+const loader = document.getElementById("loader"), ldWave = document.getElementById("ldWave"), ldText = document.getElementById("ldText");
+let shownLoad = 0, loaderDone = false, loaderDoneAt = 0, wavePhase = 0;
+if (still) { loader.remove(); loaderDone = true; loaderDoneAt = -1e9; }   // для превью — сразу готовый кадр
+function updateLoader(dt) {
+  if (loaderDone) return;
+  const real = earthReady ? 1 : earthProgress * 0.95;
+  shownLoad = Math.min(shownLoad + Math.max(0, real - shownLoad) * Math.min(1, dt * 4), shownLoad + dt / 1.4, 1);
+  wavePhase += dt * 3;
+  const y = 40 - 40 * shownLoad, a = 1.6 * (1 - shownLoad * 0.6);   // уровень «жидкости» и высота волны
+  let d = `M0 ${y}`;
+  for (let x = 0; x <= 40; x += 2) d += ` L${x} ${(y + Math.sin(x * 0.35 + wavePhase) * a).toFixed(2)}`;
+  ldWave.setAttribute("d", d + " L40 41 L0 41 Z");
+  ldText.textContent = `Загрузка · ${Math.round(shownLoad * 100)}%`;
+  if (shownLoad >= 0.999 && earthReady) { loaderDone = true; loaderDoneAt = performance.now(); setTimeout(() => loader.classList.add("done"), 250); }
+}
+
+let t = 0, t0 = 0, last = performance.now(), uiShown = false;
+let P = 0, Ptarget = 0;
+const mouseS = new THREE.Vector2(), ZERO2 = new THREE.Vector2();
+const outro = document.getElementById("outro"), cue = document.getElementById("cue"), league = document.getElementById("league");
+const scrollFor = p => p * innerHeight * 1.6;
+const readScroll = () => {
+  Ptarget = Math.min(1, Math.max(0, scrollY / (innerHeight * 1.6)));
+  if (!earthReady) Ptarget = Math.min(Ptarget, 0.36);  // Земля ещё грузится — дальше вида над полем не пускаем
+};
+let Pv = 0;                                            // скорость камеры: переход едет за прокруткой как на пружине
+addEventListener("scroll", readScroll, { passive: true });
+function frame(now) {
+  const raw = (now - last) / 1000, dt = Math.min(raw, 1 / 24); last = now;
+  t = reduce ? 10 : (now - t0) / 1000;            // заставка идёт по часам, а не по кадрам
+  U.uTime.value += dt;
+  const L = lampLevel(t);
+  U.uLight.value = L;
+  spot.intensity = 80 * L; rim.intensity = 1.5 * L; hemi.intensity = 0.3 * L;
+  ball.material.envMapIntensity = 0.4 * L;
+
+  if (!st.spawned && t > (reduce ? 0 : 1.15)) {
+    st.spawned = true;
+    if (reduce) st.p.set(0, R, 0); else { st.p.set(0.15, 4.4, -0.1); st.v.set(-0.12, -1.2, 0.08); st.w.set(-6, 0.8, 0.5); }
+  }
+  physics(dt);
+  ball.visible = st.spawned;
+  textMat.uniforms.uReveal.value = reduce ? 1 : sm(1.7, 3.1, t);
+  if (!uiShown && t > 2.6) { ui.classList.add("on"); uiShown = true; }
+
+  // прокрутка: камера-кран поднимается над центральным кругом
+  // пружина почти без перехлёста: камера мягко разгоняется и плавно тормозит, без рывков
+  Pv += (Ptarget - P) * 16 * dt; Pv *= Math.exp(-8.5 * dt); P += Pv * dt;
+  if (Math.abs(Ptarget - P) < 1e-4 && Math.abs(Pv) < 1e-4) { P = Ptarget; Pv = 0; }
+  const e = easeIO(Math.min(1, P / 0.35));
+  mouseS.lerp(reduce ? ZERO2 : mouse, Math.min(1, dt * 3));
+  placeCamera(P, mouseS.x, mouseS.y);
+  U.uBeam.value = 1 - sm(0.04, 0.22, P);            // конус луча гаснет, пока камера поднимается над ним
+  U.uFade.value = 1 - sm(0.02, 0.2, P);
+  U.uPool.value = 2.5 + 0.9 * e;
+  U.uShow.value = sm(0.3, 0.7, P);
+  U.uPillar.value = sm(0.62, 0.9, P);                // луч — когда камера уже далеко и смотрит сбоку
+  spin += dt * 0.012;                                // Земля медленно вращается вокруг оси через Москву
+  planet.quaternion.copy(spinQ.setFromAxisAngle(UP, spin)).multiply(MOSCOW);
+  earthU.uCloudShift.value = (earthU.uCloudShift.value + dt * 0.0015) % 1;
+  outro.style.opacity = sm(0.78, 0.97, P);
+  outro.classList.toggle("live", P > 0.9);            // ссылка кликабельна, только когда финал виден
+  outro.style.transform = `translateY(${(1 - sm(0.78, 1, P)) * 30}px)`;
+  // «Листай» проявляется, когда мячик-загрузчик уже погас
+  cue.style.opacity = loaderDone ? sm(1100, 1600, performance.now() - loaderDoneAt) * (1 - sm(0, 0.08, P)) : 0;
+  updateLoader(Math.min(raw, 0.1));                 // по реальному времени, а не по числу кадров
+  score.style.opacity = 1 - sm(0.25, 0.4, P);
+  league.style.opacity = 1 - sm(0.6, 0.8, P);
+
+  // свет чуть следует за курсором и за мячом (на виде сверху — только за мячом)
+  const follow = 1 - e;
+  spotXZ.lerp(new THREE.Vector2(mouse.x * 0.45 * follow + st.p.x * 0.4, -mouse.y * 0.28 * follow + st.p.z * 0.4), Math.min(1, dt * 2.5));
+  U.uSpot.value.copy(spotXZ);
+  spot.target.position.set(spotXZ.x, 0, spotXZ.y);
+  tmp.set(spotXZ.x, 0, spotXZ.y).sub(LAMP).normalize();
+  cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, -1, 0), tmp);
+  U.uBall.value.set(st.p.x, st.spawned ? st.p.y : 60, st.p.z, R);
+
+  composer.render();
+  if (t > 4 && raw < 0.5) adaptQuality(raw);         // паузы (вкладка в фоне) не считаем
+  requestAnimationFrame(frame);
+}
+
+// автокачество: если кадров стабильно мало, по шагам снижаем разрешение, густоту травы и свечение
+const grassMesh = scene.children.find(o => o.isInstancedMesh);
+const quality = { acc: 0, n: 0, step: 0 };
+function adaptQuality(dt) {
+  if (document.hidden || quality.step > 2) return;
+  quality.acc += dt; quality.n++;
+  if (quality.acc < 2) return;
+  const fps = quality.n / quality.acc; quality.acc = 0; quality.n = 0;
+  if (fps > 40) return;
+  quality.step++;
+  if (quality.step === 1) { renderer.setPixelRatio(1); composer.setPixelRatio(1); layout(); }
+  if (quality.step === 2) grassMesh.count = Math.floor(grassMesh.count * 0.55);
+  if (quality.step === 3) bloom.enabled = false;
+}
+addEventListener("resize", layout);
+const fontsReady = Promise.race([
+  Promise.all([document.fonts.load("900 120px Unbounded", "ФК РЭУ"), document.fonts.load("600 12px Manrope", "Сезон")]),
+  new Promise(r => setTimeout(r, 2500))
+]);
+fontsReady.then(() => {
+  layout(); readScroll(); P = Ptarget;
+  last = t0 = performance.now();
+  requestAnimationFrame(frame);
+});
+</script>
+</body>
+</html>

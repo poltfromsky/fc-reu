@@ -84,6 +84,8 @@
     font: 700 clamp(11px, .75vw, 15px)/1 "Manrope", sans-serif; letter-spacing: .14em; text-transform: uppercase;
     color: var(--paper); text-decoration: none; transition: background .25s, border-color .25s;
   }
+  .outro .cta-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 22px; }
+  .outro .cta-row .cta { margin-top: 0; }
   .outro:not(.live) .cta { pointer-events: none; }
   .outro .cta:hover { background: rgba(242, 238, 230, .08); border-color: rgba(242, 238, 230, .45); }
   .outro .cta span { transition: transform .25s; }
@@ -122,7 +124,7 @@
 <div class="grain"></div>
 <div class="ui" id="ui">
   <div class="tl"><img class="crest" src="logo.png" alt="Эмблема ФК РЭУ"><span><b>РЭУ Football Club</b><br>с 2010 года</span></div>
-  <div class="tr">Сезон<br><b>2026</b><br><button id="snd" type="button">Звук · выкл</button><br><a class="tg" href="https://t.me/fcreu" target="_blank" rel="noopener">Telegram ↗</a></div>
+  <div class="tr">Сезон<br><b>2026/2027</b><br><button id="snd" type="button">Звук · выкл</button><br><a class="tg" href="https://t.me/fcreu" target="_blank" rel="noopener">Telegram ↗</a><br><a class="tg" href="https://vk.com/fcreu" target="_blank" rel="noopener">ВКонтакте ↗</a></div>
   <div class="bl" id="league">Студенческий футбол<br>Москвы</div>
   <div class="br" id="score">Нажми на мяч<br>Потяни — закрутишь</div>
   <div class="cue" id="cue"><span>Листай</span><i></i></div>
@@ -151,8 +153,11 @@
 </div>
 <div class="outro" id="outro">
   <h2>С 2010<br>года</h2>
-  <p>Играем за <b>красно-жёлтых</b></p>
-  <a class="cta" href="https://t.me/fcreu" target="_blank" rel="noopener">Следить за командой в Telegram · @fcreu <span>→</span></a>
+  <p>Играем за <b>Плехановку</b></p>
+  <div class="cta-row">
+    <a class="cta" href="https://t.me/fcreu" target="_blank" rel="noopener">Telegram · @fcreu <span>→</span></a>
+    <a class="cta" href="https://vk.com/fcreu" target="_blank" rel="noopener">ВКонтакте · fcreu <span>→</span></a>
+  </div>
   <p class="credit">Снимки Земли: NASA Visible Earth</p>
 </div>
 <div class="scroll"></div>

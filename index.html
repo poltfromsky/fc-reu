@@ -170,19 +170,18 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
-import { FXAAShader } from "three/addons/shaders/FXAAShader.js";
 import { mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
 
 // ?still — служебный режим для превью: сразу готовый первый кадр, без заставки и анимаций
 const still = location.search.includes("still");
 const reduce = still || matchMedia("(prefers-reduced-motion: reduce)").matches;
 const mobile = matchMedia("(max-width: 760px), (pointer: coarse)").matches;
-// ── тестовые режимы для поиска мигания на ПК: ?test=1 / 2 / 3 / 13. Без параметра и на телефоне — всё как обычно ──
-const TEST = mobile ? "" : (new URLSearchParams(location.search).get("test") || "");
-const T_DIRECT = TEST.includes("1");    // 1 — рисуем сразу на экран, без промежуточного буфера (сглаживание делает браузер)
-const T_FXAA = TEST.includes("2");      // 2 — буфер без 4× сглаживания, вместо него FXAA (диагностика)
-const T_VSCROLL = TEST.includes("3");   // 3 — виртуальная прокрутка: страница стоит, колесо/клавиши двигают камеру
+// На компьютере (по итогам тестов 2026-11-01, записи Mac и Windows разобраны по кадрам):
+//  — рисуем сразу на экран, без промежуточного буфера: с буфером и 4× сглаживанием Chrome на один кадр терял куски картинки;
+//  — виртуальная прокрутка: страница стоит, колесо/трекпад/клавиши двигают камеру (так понравилось больше).
+// На телефоне всё как было: буфер со свечением и обычная прокрутка.
+const T_DIRECT = !mobile;
+const T_VSCROLL = !mobile;
 if ("scrollRestoration" in history) history.scrollRestoration = "manual";   // после обновления — всегда с первого экрана
 scrollTo(0, 0);
 document.documentElement.classList.add("locked");
@@ -199,23 +198,21 @@ const PR = mobile ? Math.min(devicePixelRatio, 1.6)
   : Math.max(1, Math.min(devicePixelRatio, 2, Math.sqrt(5.2e6 / (screen.width * screen.height))));
 renderer.setPixelRatio(PR);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;
+renderer.toneMappingExposure = T_DIRECT ? 1.08 : 1.05;   // на ПК нет свечения — чуть светлее, как было
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x020306);
+scene.background = new THREE.Color(T_DIRECT ? 0x000000 : 0x020306);   // при выводе сразу на экран #020306 давал синеватый фон
 const camera = new THREE.PerspectiveCamera(28, 1, 0.3, 1200);
 const RP = 30;                                   // радиус планеты: поле стоит на её макушке
 const PLANET_C = new THREE.Vector3(0, -RP - 0.08, 0);   // на волосок ниже газона, чтобы они не мерцали друг сквозь друга
 const pmrem = new THREE.PMREMGenerator(renderer);
 scene.environment = pmrem.fromScene(new RoomEnvironment(renderer), 0.04).texture;
 
-const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: mobile || T_FXAA ? 0 : 4 }));
+const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 0 }));   // буфер нужен только телефону, там без MSAA
 composer.setPixelRatio(PR);
 composer.addPass(new RenderPass(scene, camera));
 const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.12, 0.5, 0.95);
 composer.addPass(bloom);
 composer.addPass(new OutputPass());
-const fxaa = new ShaderPass(FXAAShader);
-if (T_FXAA) composer.addPass(fxaa);
 
 const U = {
   uTime: { value: 0 }, uLight: { value: 0 },
@@ -706,7 +703,6 @@ function layout() {
   W = innerWidth; H = innerHeight; portrait = W / H < 0.85;
   renderer.setSize(W, H, false);
   if (!T_DIRECT) { composer.setSize(W, H); bloom.setSize(W, H); }
-  fxaa.material.uniforms.resolution.value.set(1 / (W * renderer.getPixelRatio()), 1 / (H * renderer.getPixelRatio()));
   camera.aspect = W / H;
   // первый кадр — низко у газона; финал прокрутки — сверху над центральным кругом
   if (portrait) { camera.fov = 34; HERO.pos.set(0, 1.25, 8.8); HERO.look.set(0, 1.75, 0); TOP.r = 12.5; }
@@ -832,6 +828,7 @@ const readScroll = () => {
     vPos = 0; Ptarget = 0; return;
   }
   Ptarget = Math.min(1, Math.max(0, T_VSCROLL ? vPos : scrollY / (innerHeight * 1.6)));
+  if (still) Ptarget = parseFloat(new URLSearchParams(location.search).get("p") || "0");   // для снимков: ?still&p=0.5
   if (!earthReady) Ptarget = Math.min(Ptarget, 0.36);  // Земля ещё грузится — дальше вида над полем не пускаем
 };
 let Pv = 0;                                            // скорость камеры: переход едет за прокруткой как на пружине
@@ -849,12 +846,6 @@ if (T_VSCROLL) {
     if (step === undefined) return;
     e.preventDefault(); vPos = Math.min(1, Math.max(0, vPos + step)); readScroll();
   });
-}
-if (TEST) {                                            // метка режима, чтобы не перепутать вкладки
-  const b = document.createElement("div");
-  b.textContent = "ТЕСТ " + TEST;
-  b.style.cssText = "position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:30;padding:6px 12px;border-radius:999px;background:#c8201a;color:#fff;font:700 12px Manrope,sans-serif;letter-spacing:.12em";
-  document.body.appendChild(b);
 }
 function frame(now) {
   const raw = Math.max(0, (now - last) / 1000), dt = Math.min(raw, 1 / 24); last = Math.max(last, now);

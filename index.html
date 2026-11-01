@@ -25,6 +25,7 @@
   :root[data-theme="dark"] { color-scheme: dark; }
 
   html, body { margin: 0; background: var(--ink); overflow-x: hidden; scrollbar-width: none; }
+  html.locked, html.locked body { overflow: hidden; }   /* пока идёт загрузка и заставка — листать нельзя */
   html::-webkit-scrollbar { display: none; }
   #scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: pan-y; }
   .scroll { height: 260vh; }
@@ -109,6 +110,10 @@
     .outro h2 { font-size: min(13vw, 7vh); }
   }
   @media (prefers-reduced-motion: reduce) { .grain, .cue i { animation: none; } }
+  /* на компьютере «зерно» — лёгкая готовая текстура без смешивания с 3D: тяжёлый фильтр мешал рисовать кадр */
+  @media (min-width: 761px) and (pointer: fine) {
+    .grain { inset: 0; mix-blend-mode: normal; opacity: 1; background-image: url("noise.png"); background-size: 160px; animation: none; }
+  }
 </style>
 </head>
 <body>
@@ -171,6 +176,9 @@ import { mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
 const still = location.search.includes("still");
 const reduce = still || matchMedia("(prefers-reduced-motion: reduce)").matches;
 const mobile = matchMedia("(max-width: 760px), (pointer: coarse)").matches;
+if ("scrollRestoration" in history) history.scrollRestoration = "manual";   // после обновления — всегда с первого экрана
+scrollTo(0, 0);
+document.documentElement.classList.add("locked");
 const sm = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 const R = 0.5;                                   // радиус мяча
 const LAMP = new THREE.Vector3(0, 6.8, 0.6);     // прожектор
@@ -178,7 +186,10 @@ const LAMP = new THREE.Vector3(0, 6.8, 0.6);     // прожектор
 // ── рендер ──
 const canvas = document.getElementById("scene");
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: "high-performance" });
-const PR = Math.min(devicePixelRatio, mobile ? 1.6 : 2);
+// разрешение выбираем один раз при загрузке и больше не меняем — смена на ходу давала чёрный/разрезанный кадр.
+// На больших экранах ограничиваем число пикселей (~5 Мп), на телефоне — как было.
+const PR = mobile ? Math.min(devicePixelRatio, 1.6)
+  : Math.max(1, Math.min(devicePixelRatio, 2, Math.sqrt(5.2e6 / (screen.width * screen.height))));
 renderer.setPixelRatio(PR);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
@@ -354,14 +365,21 @@ const grassLight = `
 }
 
 // ── Земля под полем: снимки NASA (день, ночь, рельеф, облака); поле стоит ровно на Москве ──
-const big = !mobile && renderer.capabilities.maxTextureSize >= 8192;    // 8K на компьютере, 4K на телефоне
+// 8K — только цветной снимок на компьютере; облака, ночь и рельеф в 4K (вчетверо меньше видеопамяти, на глаз разницы нет).
+// Все четыре карты в 8K занимали ~700 МБ видеопамяти — Chrome на Mac от этого терял куски кадра (чёрные прямоугольники).
+const big = !mobile && renderer.capabilities.maxTextureSize >= 8192;
 const earthLoad = new THREE.LoadingManager();
 let earthReady = false, earthProgress = 0;
-earthLoad.onProgress = (_, loaded, total) => { earthProgress = loaded / total; };
-earthLoad.onLoad = () => { earthReady = true; readScroll(); };
+let earthLoaded = 0, earthTotal = 4, earthLastAt = performance.now();
+earthLoad.onProgress = (_, loaded, total) => { earthLoaded = loaded; earthTotal = total; earthLastAt = performance.now(); earthProgress = loaded / total; };
+earthLoad.onLoad = () => {
+  // на компьютере сразу отправляем карты Земли в видеокарту, пока крутится загрузчик, — без рывка при подлёте
+  if (!mobile) for (const k of ["uDay", "uNight", "uHeight", "uClouds"]) renderer.initTexture(earthU[k].value);
+  earthReady = true; readScroll();
+};
 const texLoader = new THREE.TextureLoader(earthLoad);
 function earthTex(name, srgb) {
-  const t = texLoader.load(`textures/earth_${name}_${big ? "8k" : "4k"}.jpg`);
+  const t = texLoader.load(`textures/earth_${name}_${big && name === "day" ? "8k" : "4k"}.jpg`);
   if (srgb) t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = renderer.capabilities.getMaxAnisotropy();
   t.wrapS = THREE.RepeatWrapping;       // по долготе карта замкнута — облака плывут без шва
@@ -751,7 +769,9 @@ let shownLoad = 0, loaderDone = false, loaderDoneAt = 0, wavePhase = 0;
 if (still) { loader.remove(); loaderDone = true; loaderDoneAt = -1e9; }   // для превью — сразу готовый кадр
 function updateLoader(dt) {
   if (loaderDone) return;
-  const real = earthReady ? 1 : earthProgress * 0.95;
+  // между файлами процент плавно ползёт к следующему (до 90% шага), чтобы мячик наполнялся без рывков
+  const creep = 0.9 * (1 - Math.exp(-(performance.now() - earthLastAt) / 1600));
+  const real = earthReady ? 1 : Math.min(0.97, (earthLoaded + creep) / earthTotal);
   shownLoad = Math.min(shownLoad + Math.max(0, real - shownLoad) * Math.min(1, dt * 4), shownLoad + dt / 1.4, 1);
   wavePhase += dt * 3;
   const y = 40 - 40 * shownLoad, a = 1.6 * (1 - shownLoad * 0.6);   // уровень «жидкости» и высота волны
@@ -768,13 +788,17 @@ const mouseS = new THREE.Vector2(), ZERO2 = new THREE.Vector2();
 const outro = document.getElementById("outro"), cue = document.getElementById("cue"), league = document.getElementById("league");
 const scrollFor = p => p * innerHeight * 1.6;
 const readScroll = () => {
+  if (document.documentElement.classList.contains("locked")) {   // пока грузится — всегда первый экран
+    if (scrollY > 0) scrollTo(0, 0);
+    Ptarget = 0; return;
+  }
   Ptarget = Math.min(1, Math.max(0, scrollY / (innerHeight * 1.6)));
   if (!earthReady) Ptarget = Math.min(Ptarget, 0.36);  // Земля ещё грузится — дальше вида над полем не пускаем
 };
 let Pv = 0;                                            // скорость камеры: переход едет за прокруткой как на пружине
 addEventListener("scroll", readScroll, { passive: true });
 function frame(now) {
-  const raw = (now - last) / 1000, dt = Math.min(raw, 1 / 24); last = now;
+  const raw = Math.max(0, (now - last) / 1000), dt = Math.min(raw, 1 / 24); last = Math.max(last, now);
   t = reduce ? 10 : (now - t0) / 1000;            // заставка идёт по часам, а не по кадрам
   U.uTime.value += dt;
   const L = lampLevel(t);
@@ -811,7 +835,8 @@ function frame(now) {
   outro.style.transform = `translateY(${(1 - sm(0.78, 1, P)) * 30}px)`;
   // «Листай» проявляется, когда мячик-загрузчик уже погас
   cue.style.opacity = loaderDone ? sm(1100, 1600, performance.now() - loaderDoneAt) * (1 - sm(0, 0.08, P)) : 0;
-  updateLoader(Math.min(raw, 0.1));                 // по реальному времени, а не по числу кадров
+  updateLoader(Math.min(raw, 0.1));
+  if (loaderDone && t > 2.4 && document.documentElement.classList.contains("locked")) document.documentElement.classList.remove("locked");                 // по реальному времени, а не по числу кадров
   score.style.opacity = 1 - sm(0.25, 0.4, P);
   league.style.opacity = 1 - sm(0.6, 0.8, P);
 
@@ -833,15 +858,14 @@ function frame(now) {
 const grassMesh = scene.children.find(o => o.isInstancedMesh);
 const quality = { acc: 0, n: 0, step: 0 };
 function adaptQuality(dt) {
-  if (document.hidden || quality.step > 2) return;
+  if (document.hidden || quality.step > 1) return;
   quality.acc += dt; quality.n++;
   if (quality.acc < 2) return;
   const fps = quality.n / quality.acc; quality.acc = 0; quality.n = 0;
   if (fps > 40) return;
   quality.step++;
-  if (quality.step === 1) { renderer.setPixelRatio(1); composer.setPixelRatio(1); layout(); }
-  if (quality.step === 2) grassMesh.count = Math.floor(grassMesh.count * 0.55);
-  if (quality.step === 3) bloom.enabled = false;
+  if (quality.step === 1) grassMesh.count = Math.floor(grassMesh.count * 0.55);   // без смены размера холста — не мигает
+  if (quality.step === 2) bloom.enabled = false;
 }
 addEventListener("resize", layout);
 const fontsReady = Promise.race([
@@ -849,6 +873,7 @@ const fontsReady = Promise.race([
   new Promise(r => setTimeout(r, 2500))
 ]);
 fontsReady.then(() => {
+  scrollTo(0, 0);
   layout(); readScroll(); P = Ptarget;
   last = t0 = performance.now();
   requestAnimationFrame(frame);
